@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "harness": "claude",
+  "extensions": [
+    "spex",
+    "spex-gates",
+    "spex-deep-review",
+    "spex-collab"
+  ],
+  "security": "safe"
+}
