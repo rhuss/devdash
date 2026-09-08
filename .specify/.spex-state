@@ -9,6 +9,6 @@
   "triage_impl_passed": false,
   "running": "",
   "review_spec_passed": true,
-  "review_plan_passed": false,
+  "review_plan_passed": true,
   "review_code_passed": false
 }

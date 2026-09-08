@@ -33,6 +33,8 @@ responsive during a refresh.
 | `tokio` | 1.53 | Async runtime for all I/O |
 | `reqwest` | 0.13 | HTTPS client for the GraphQL endpoint (see R5) |
 | `serde` / `serde_json` | 1.0 | GraphQL response and fixture deserialization |
+| `time` | 0.3 | `OffsetDateTime` for pull request update times, refresh timestamps, and rate-limit reset times. Features `serde` and `parsing` for the ISO-8601 values GraphQL returns. |
+| `async-trait` | 0.1 | Async methods on the `DataSource` trait, required because the design holds it as `Box<dyn DataSource>` for runtime source selection (FR-056) |
 | `toml` | 1.1 | Configuration file format |
 | `directories` | 6.0 | Per-platform config and state directory resolution |
 | `tracing`, `tracing-subscriber`, `tracing-appender` | 0.1 / 0.3 / 0.2 | Bounded rolling log file |
@@ -68,6 +70,28 @@ four CI states remain distinguishable with colour removed (FR-005, SC-013).
 
 **Scale/Scope**: Tens of tracked repositories, hundreds of open pull requests. Six
 user stories, 64 functional requirements, two screens.
+
+## Global Constraints
+
+**Every task inherits this section.** These hold across the whole implementation, so
+they are not restated per task. Values are copied verbatim from [spec.md](./spec.md).
+
+| # | Constraint | Source |
+|---|---|---|
+| G1 | The application MUST NOT write any credential to its configuration file, to logs, or to the screen, and MUST NOT offer any way to enter a credential within the application. | FR-038, SC-008 |
+| G2 | Each CI state MUST be carried by a distinct symbol, so that all four remain distinguishable with colour removed entirely. Colour MAY reinforce the state but MUST NOT be the only thing that separates one state from another. | FR-005, SC-013 |
+| G3 | When the fixture data source is active, the application MUST make no network requests. | FR-057, SC-006 |
+| G4 | The application never writes to GitHub. Every action that would change state is delegated to the browser. | Assumptions, read-only tool |
+| G5 | The application MUST restore the terminal to its prior state on exit, including when it exits because of an error. | FR-012, SC-009 |
+| G6 | All repository, pull request and check data MUST reach the interface through the `DataSource` abstraction, never through calls made from view code. | FR-054 |
+| G7 | Rust 1.93.0 or later, edition 2024. Crate versions as pinned in Technical Context above. | Technical Context |
+| G8 | The terminal supports Unicode. A pure-ASCII rendering mode is not required. | Assumptions |
+| G9 | Targets github.com only. GitHub Enterprise Server and multiple simultaneous accounts are out of scope. | Assumptions |
+
+G1, G2, G3 and G6 are the ones a task can violate without noticing. A logging call
+that formats a request with its headers breaks G1; a status glyph that differs only
+by colour breaks G2; an `#[allow]` on an unused HTTP client in the fixture path
+breaks G3; a render function that reaches for `reqwest` breaks G6.
 
 ## Constitution Check
 

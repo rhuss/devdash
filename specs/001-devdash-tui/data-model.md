@@ -138,6 +138,29 @@ Draft pull requests are included, per the spec's Assumptions.
 return a `requestedReviewer` of `null` (observed in live data), which is skipped
 rather than treated as an error.
 
+### OrgRepo
+
+A repository as it appears in the settings screen, before it is tracked. Distinct
+from `Repository`, which carries pull requests and CI state that settings never
+fetches.
+
+```rust
+pub struct OrgRepo {
+    pub id: RepoId,          // same identity as Repository (FR-021)
+    pub owner: String,
+    pub name: String,
+    pub is_archived: bool,   // filtered out before display (FR-027)
+    pub is_fork: bool,       // carried but not filtered, per Assumptions
+}
+```
+
+Sourced from GraphQL query Q4. `is_archived` is carried rather than filtered at the
+source so the filtering rule lives in one place and is testable against fixture data
+that deliberately includes an archived repository (case F14).
+
+The settings screen renders an `OrgRepo` as tracked when its `id` is present in the
+tracked set, which is why identity must be the same `RepoId` used everywhere else.
+
 ### Viewer
 
 ```rust
@@ -206,12 +229,18 @@ that happens to render differently.
 ### Selection
 
 ```rust
+pub enum Pane { Repositories, PullRequests }
+
 pub struct Selection {
     pub focus: Pane,                  // which pane has focus (FR-008)
     pub repo: Option<RepoId>,         // identity, not index
     pub pull: Option<u32>,            // pull request number, not index
 }
 ```
+
+`Pane` has exactly two variants because FR-001 fixes the dashboard at two panes. The
+settings screen tracks its own position through `SettingsScreen` rather than through
+`Pane`, since its two levels are a drilldown rather than side-by-side panes.
 
 Selection is stored as **identity, not index**. This is what implements FR-045:
 after a refresh reorders or removes items, the selected repository and pull request
@@ -244,18 +273,32 @@ pub struct RefreshState {
 
 The configuration file. Full schema in [contracts/config.md](./contracts/config.md).
 
+`TrackedRepo` lives in `domain`, not in `config`, even though the configuration file
+is its only persistence. `DataSource::dashboard` takes `&[TrackedRepo]`, and putting
+it in `config` would make `source` depend on `config`, breaking the dependency
+direction stated in plan.md. `Config` in `config` owns a `Vec<TrackedRepo>`; the type
+itself belongs to the domain.
+
 ```rust
+// domain/repository.rs
+pub struct TrackedRepo {
+    pub id: RepoId,     // the merge key (FR-023), same newtype used everywhere else
+    pub owner: String,  // refreshed on rename (FR-022)
+    pub name: String,
+}
+
+// config.rs
 pub struct Config {
     pub refresh_interval_secs: u64,      // default 300 (FR-046)
     pub tracked: Vec<TrackedRepo>,
 }
-
-pub struct TrackedRepo {
-    pub id: u64,        // RepoId, the merge key (FR-023)
-    pub owner: String,  // refreshed on rename (FR-022)
-    pub name: String,
-}
 ```
+
+`id` is a `RepoId`, not a bare `u64`. Using the raw integer here would defeat the
+newtype for the one type that crosses the config-to-source boundary, and would force
+a conversion at every `dashboard()` call and every merge comparison. `RepoId` derives
+`Serialize`/`Deserialize` as a transparent newtype, so the TOML on disk still holds a
+plain integer (see contracts/config.md).
 
 **Merge rule** (FR-023): the union of the on-disk set and the in-memory set, keyed
 on `id`. An entry present in memory but absent on disk was added by this instance
@@ -306,6 +349,7 @@ to name the retry key. Neither may render as an empty dashboard.
 | FR-004, FR-006 four states and precedence | `CiState`, `rollup` |
 | FR-007 empty repository shows nothing | `rollup` returns `Option`, `None` for empty |
 | FR-014 ordering | Ordering rules |
+| FR-017, FR-027 settings repository list, archived excluded | `OrgRepo` |
 | FR-018, FR-028 settings loading and failure | `OrgRepoState` |
 | FR-021, FR-022 identity across rename | `RepoId` from `databaseId`, owner/name refreshed |
 | FR-023 merge on write | `TrackedRepo.id` as merge key |

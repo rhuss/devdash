@@ -40,7 +40,7 @@ name = "cargo"
 |---|---|---|---|---|
 | `refresh_interval_secs` | integer | no | 300 | FR-046 |
 | `tracked` | array of tables | no | empty | FR-021 |
-| `tracked[].id` | integer | yes | | FR-021, merge key |
+| `tracked[].id` | integer | yes | | FR-021, merge key. Deserializes into `RepoId`, a transparent newtype, so the file holds a plain integer. |
 | `tracked[].owner` | string | yes | | FR-022, display and query |
 | `tracked[].name` | string | yes | | FR-022, display and query |
 
