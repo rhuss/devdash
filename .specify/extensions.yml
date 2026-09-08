@@ -1,0 +1,200 @@
+installed:
+- spex
+- spex-collab
+- spex-deep-review
+- spex-detach
+- spex-gates
+- spex-teams
+- spex-worktrees
+settings:
+  auto_execute_hooks: true
+hooks:
+  after_specify:
+  - extension: spex
+    command: speckit.spex.flow-state
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex.flow-state?
+    description: Mark specification complete in flow state
+    condition: null
+  - extension: spex-gates
+    command: speckit.spex-gates.review-spec
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex-gates.review-spec?
+    description: Review spec soundness after specification
+    condition: null
+  - extension: spex-worktrees
+    command: speckit.spex-worktrees.manage
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex-worktrees.manage?
+    description: Create git worktree after specification
+    condition: null
+  before_plan:
+  - extension: spex
+    command: speckit.spex.flow-state
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex.flow-state?
+    description: Mark plan as active in flow state
+    condition: null
+  - extension: spex-teams
+    command: speckit.spex-teams.research
+    enabled: false
+    optional: true
+    priority: 10
+    prompt: Run parallel codebase research?
+    description: Parallel codebase research during planning via Agent Teams
+    condition: null
+  after_tasks:
+  - extension: spex
+    command: speckit.spex.flow-state
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex.flow-state?
+    description: Clear running state after task generation
+    condition: null
+  - extension: spex-gates
+    command: speckit.spex-gates.review-plan
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex-gates.review-plan?
+    description: Review plan and task quality after task generation
+    condition: null
+  - extension: spex-collab
+    command: speckit.spex-collab.reviewers
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex-collab.reviewers?
+    description: Generate REVIEWERS.md after task generation
+    condition: null
+  before_implement:
+  - extension: spex
+    command: speckit.spex.flow-state
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex.flow-state?
+    description: Mark implement as active in flow state
+    condition: null
+  - extension: spex-worktrees
+    command: speckit.spex-worktrees.manage
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex-worktrees.manage?
+    description: Verify worktree isolation before implementation
+    condition: null
+  - extension: spex-collab
+    command: speckit.spex-collab.phase-split
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex-collab.phase-split?
+    description: Present phase split proposal and per-phase implementation instructions
+    condition: null
+  after_implement:
+  - extension: spex
+    command: speckit.spex.flow-state
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex.flow-state?
+    description: Mark implementation complete in flow state
+    condition: null
+  - extension: spex-gates
+    command: speckit.spex-gates.review-code
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex-gates.review-code?
+    description: Review code compliance after implementation
+    condition: null
+  - extension: spex-deep-review
+    command: speckit.spex-deep-review.run
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Run deep multi-perspective review?
+    description: Multi-agent code review after implementation
+    condition: null
+  before_specify:
+  - extension: spex
+    command: speckit.spex.flow-state
+    enabled: true
+    optional: false
+    priority: 1
+    prompt: Execute speckit.spex.flow-state?
+    description: Initialize flow state and status line before specification
+    condition: null
+  before_clarify:
+  - extension: spex
+    command: speckit.spex.flow-state
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex.flow-state?
+    description: Mark clarify as active in flow state
+    condition: null
+  after_clarify:
+  - extension: spex
+    command: speckit.spex.flow-state
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex.flow-state?
+    description: Mark clarification complete in flow state
+    condition: null
+  after_plan:
+  - extension: spex
+    command: speckit.spex.flow-state
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex.flow-state?
+    description: Clear running state after planning
+    condition: null
+  before_tasks:
+  - extension: spex
+    command: speckit.spex.flow-state
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex.flow-state?
+    description: Mark tasks as active in flow state
+    condition: null
+  after_finish:
+  - extension: spex
+    command: speckit.spex.flow-state
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.spex.flow-state?
+    description: Remove flow state file after feature completion
+    condition: null
+  after_init:
+  - extension: spex-detach
+    command: speckit.spex-detach.detach
+    enabled: false
+    optional: false
+    priority: 10
+    prompt: Set up .git/info/exclude entries for stealth mode?
+    description: Write exclude entries to hide spec artifacts from git
+    condition: null
+  before_finish:
+  - extension: spex-detach
+    command: speckit.spex-detach.detach
+    enabled: false
+    optional: true
+    priority: 10
+    prompt: Archive specs to project-specs repo before finishing?
+    description: Copy spec artifacts to configured archive path
+    condition: null
