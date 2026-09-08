@@ -8,6 +8,13 @@
 !**/.specify/spex.json
 !**/.specify/memory/
 !**/.specify/memory/constitution.md
+
+
+# Added by cargo
+#
+# already existing elements were commented out
+
+#/target
 !**/.specify/feature.json
 !**/.specify/integration.json
 !**/.specify/extensions.yml

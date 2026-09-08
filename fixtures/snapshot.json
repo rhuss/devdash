@@ -1,0 +1,293 @@
+{
+  "viewer": {
+    "login": "octocat",
+    "organizations": ["acme", "widgets-inc"],
+    "teams": { "known": ["acme/platform", "acme/reviewers"] }
+  },
+  "repositories": [
+    {
+      "id": 1001,
+      "owner": "acme",
+      "name": "api",
+      "open_count": 4,
+      "pulls": [
+        {
+          "number": 212,
+          "title": "Add retry backoff to the fetch loop",
+          "author": "octocat",
+          "updated_at": "2026-09-08T09:14:00Z",
+          "is_draft": false,
+          "url": "https://github.com/acme/api/pull/212",
+          "ci": "passing",
+          "review_requests": []
+        },
+        {
+          "number": 198,
+          "title": "Fix connection pool exhaustion under load",
+          "author": "alice",
+          "updated_at": "2026-09-07T16:30:00Z",
+          "is_draft": false,
+          "url": "https://github.com/acme/api/pull/198",
+          "ci": "failing",
+          "review_requests": [
+            { "user": "octocat" }
+          ]
+        },
+        {
+          "number": 195,
+          "title": "Upgrade TLS library to 0.24",
+          "author": "bob",
+          "updated_at": "2026-09-06T11:00:00Z",
+          "is_draft": false,
+          "url": "https://github.com/acme/api/pull/195",
+          "ci": "pending",
+          "review_requests": [
+            { "team": "acme/platform" }
+          ]
+        },
+        {
+          "number": 190,
+          "title": "WIP: Experiment with gRPC transport",
+          "author": "carol",
+          "updated_at": "2026-09-05T08:45:00Z",
+          "is_draft": true,
+          "url": "https://github.com/acme/api/pull/190",
+          "ci": "no_checks",
+          "review_requests": []
+        }
+      ]
+    },
+    {
+      "id": 1002,
+      "owner": "acme",
+      "name": "web",
+      "open_count": 0,
+      "pulls": []
+    },
+    {
+      "id": 1003,
+      "owner": "acme",
+      "name": "cli",
+      "open_count": 2,
+      "pulls": [
+        {
+          "number": 45,
+          "title": "Add shell completion for zsh",
+          "author": "dave",
+          "updated_at": "2026-09-08T10:00:00Z",
+          "is_draft": false,
+          "url": "https://github.com/acme/cli/pull/45",
+          "ci": "passing",
+          "review_requests": [
+            { "user": "eve" }
+          ]
+        },
+        {
+          "number": 42,
+          "title": "Refactor argument parsing to clap v4",
+          "author": "octocat",
+          "updated_at": "2026-09-07T14:22:00Z",
+          "is_draft": false,
+          "url": "https://github.com/acme/cli/pull/42",
+          "ci": "passing",
+          "review_requests": []
+        }
+      ]
+    },
+    {
+      "id": 1005,
+      "owner": "acme",
+      "name": "docs",
+      "open_count": 3,
+      "pulls": [
+        {
+          "number": 101,
+          "title": "Update getting started guide",
+          "author": "frank",
+          "updated_at": "2026-09-08T07:30:00Z",
+          "is_draft": false,
+          "url": "https://github.com/acme/docs/pull/101",
+          "ci": "no_checks",
+          "review_requests": []
+        },
+        {
+          "number": 99,
+          "title": "Fix broken links in API reference",
+          "author": "grace",
+          "updated_at": "2026-09-07T20:15:00Z",
+          "is_draft": false,
+          "url": "https://github.com/acme/docs/pull/99",
+          "ci": "no_checks",
+          "review_requests": []
+        },
+        {
+          "number": 97,
+          "title": "Add migration guide for v3",
+          "author": "octocat",
+          "updated_at": "2026-09-06T15:00:00Z",
+          "is_draft": false,
+          "url": "https://github.com/acme/docs/pull/97",
+          "ci": "no_checks",
+          "review_requests": [
+            { "team": "acme/reviewers" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2001,
+      "owner": "widgets-inc",
+      "name": "dashboard",
+      "open_count": 5,
+      "pulls": [
+        {
+          "number": 330,
+          "title": "Add dark mode toggle",
+          "author": "heidi",
+          "updated_at": "2026-09-08T11:45:00Z",
+          "is_draft": false,
+          "url": "https://github.com/widgets-inc/dashboard/pull/330",
+          "ci": "passing",
+          "review_requests": []
+        },
+        {
+          "number": 328,
+          "title": "Fix chart rendering on Safari",
+          "author": "ivan",
+          "updated_at": "2026-09-08T08:00:00Z",
+          "is_draft": false,
+          "url": "https://github.com/widgets-inc/dashboard/pull/328",
+          "ci": "failing",
+          "review_requests": [
+            { "user": "octocat" }
+          ]
+        },
+        {
+          "number": 325,
+          "title": "Implement CSV export for reports",
+          "author": "judy",
+          "updated_at": "2026-09-07T19:30:00Z",
+          "is_draft": false,
+          "url": "https://github.com/widgets-inc/dashboard/pull/325",
+          "ci": "passing",
+          "review_requests": []
+        },
+        {
+          "number": 320,
+          "title": "Add pagination to user list",
+          "author": "octocat",
+          "updated_at": "2026-09-07T12:00:00Z",
+          "is_draft": false,
+          "url": "https://github.com/widgets-inc/dashboard/pull/320",
+          "ci": "pending",
+          "review_requests": []
+        },
+        {
+          "number": 315,
+          "title": "Prototype real-time notifications",
+          "author": "karl",
+          "updated_at": "2026-09-06T09:00:00Z",
+          "is_draft": true,
+          "url": "https://github.com/widgets-inc/dashboard/pull/315",
+          "ci": "no_checks",
+          "review_requests": []
+        }
+      ]
+    },
+    {
+      "id": 2002,
+      "owner": "widgets-inc",
+      "name": "sdk",
+      "open_count": 1,
+      "pulls": [
+        {
+          "number": 88,
+          "title": "Bump minimum Node.js version to 20",
+          "author": "laura",
+          "updated_at": "2026-09-07T10:00:00Z",
+          "is_draft": false,
+          "url": "https://github.com/widgets-inc/sdk/pull/88",
+          "ci": "passing",
+          "review_requests": [
+            { "team": "acme/platform" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2003,
+      "owner": "widgets-inc",
+      "name": "infra",
+      "open_count": 150,
+      "pulls": [
+        {
+          "number": 500,
+          "title": "Migrate to Terraform 1.8",
+          "author": "mallory",
+          "updated_at": "2026-09-08T06:00:00Z",
+          "is_draft": false,
+          "url": "https://github.com/widgets-inc/infra/pull/500",
+          "ci": "pending",
+          "review_requests": []
+        },
+        {
+          "number": 498,
+          "title": "Add monitoring dashboards for new regions",
+          "author": "nancy",
+          "updated_at": "2026-09-07T22:00:00Z",
+          "is_draft": false,
+          "url": "https://github.com/widgets-inc/infra/pull/498",
+          "ci": "passing",
+          "review_requests": []
+        }
+      ]
+    },
+    {
+      "id": 1006,
+      "owner": "acme",
+      "name": "mobile",
+      "open_count": 2,
+      "pulls": [
+        {
+          "number": 77,
+          "title": "Implement push notification opt-in",
+          "author": "oscar",
+          "updated_at": "2026-09-08T12:30:00Z",
+          "is_draft": false,
+          "url": "https://github.com/acme/mobile/pull/77",
+          "ci": "passing",
+          "review_requests": []
+        },
+        {
+          "number": 74,
+          "title": "Fix crash on iOS 17 launch",
+          "author": "pat",
+          "updated_at": "2026-09-07T17:00:00Z",
+          "is_draft": false,
+          "url": "https://github.com/acme/mobile/pull/74",
+          "ci": "failing",
+          "review_requests": [
+            { "user": "octocat" }
+          ]
+        }
+      ]
+    }
+  ],
+  "org_repositories": {
+    "acme": [
+      { "id": 1001, "owner": "acme", "name": "api", "is_archived": false, "is_fork": false },
+      { "id": 1002, "owner": "acme", "name": "web", "is_archived": false, "is_fork": false },
+      { "id": 1003, "owner": "acme", "name": "cli", "is_archived": false, "is_fork": false },
+      { "id": 1004, "owner": "acme", "name": "legacy", "is_archived": true, "is_fork": false },
+      { "id": 1005, "owner": "acme", "name": "docs", "is_archived": false, "is_fork": false },
+      { "id": 1006, "owner": "acme", "name": "mobile", "is_archived": false, "is_fork": false },
+      { "id": 1007, "owner": "acme", "name": "frontend-fork", "is_archived": false, "is_fork": true }
+    ],
+    "widgets-inc": [
+      { "id": 2001, "owner": "widgets-inc", "name": "dashboard", "is_archived": false, "is_fork": false },
+      { "id": 2002, "owner": "widgets-inc", "name": "sdk", "is_archived": false, "is_fork": false },
+      { "id": 2003, "owner": "widgets-inc", "name": "infra", "is_archived": false, "is_fork": false },
+      { "id": 2004, "owner": "widgets-inc", "name": "old-site", "is_archived": true, "is_fork": false }
+    ]
+  }
+}

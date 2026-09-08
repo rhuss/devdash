@@ -1,0 +1,49 @@
+[package]
+name = "devdash"
+version = "0.1.0"
+edition = "2024"
+description = "A terminal dashboard for GitHub pull requests and CI state"
+
+[dependencies]
+ratatui = "0.30"
+crossterm = "0.29"
+tokio = { version = "1.53", features = ["full"] }
+reqwest = { version = "0.13", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1.1"
+directories = "6"
+time = { version = "0.3", features = ["serde", "parsing", "formatting", "macros"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+thiserror = "2"
+anyhow = "1"
+tempfile = "3"
+clap = { version = "4", features = ["derive"] }
+async-trait = "0.1"
+
+[dev-dependencies]
+insta = "1.48"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+option_if_let_else = "allow"
+collapsible_if = "allow"
+let_underscore_untyped = "allow"
+significant_drop_tightening = "allow"
+cast_possible_truncation = "allow"
+too_many_lines = "allow"
+single_char_pattern = "allow"
+missing_const_for_fn = "allow"
+useless_vec = "allow"
+unnecessary_map_or = "allow"
