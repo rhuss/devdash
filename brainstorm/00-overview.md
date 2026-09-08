@@ -16,6 +16,8 @@ Last updated: 2026-09-08
 - Rendering a repository with no CI configured versus one that is genuinely failing (from #01)
 - Rate-limit budget for interval refresh, and the default interval (from #01)
 - Whether the repository CI glyph reflects all open PRs or only those matching the active filter (from #01)
+- How the fixture data source is selected at startup: flag, environment variable, or config file (from #01)
+- Whether the fixture snapshot is handwritten or recorded, and how it is refreshed (from #01)
 
 ## Parked Ideas
 

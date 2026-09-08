@@ -104,6 +104,15 @@ Authentication reuses the token from an authenticated `gh` CLI, falling back to
 `GITHUB_TOKEN`. devdash never stores a credential of its own. Data refreshes on
 an interval and on demand via a key press.
 
+The data layer sits behind a single trait rather than calling the GitHub API
+directly from the UI. Two implementations ship: the live GitHub client, and a
+fixture client that reads a checked-in JSON snapshot. This is not a hedge
+against the API, it is what makes the application testable at all. Rendering,
+filtering, navigation and the rolled-up CI glyph can be exercised against known
+data, without a network round trip, a valid token, or a rate-limit budget spent
+on every test run. It also means the UI can be developed and demonstrated
+offline, which decouples work on the view from having credentials at hand.
+
 Implemented in Rust with ratatui.
 
 ## Key Requirements
@@ -143,6 +152,19 @@ Implemented in Rust with ratatui.
 - The user can tell when data was last refreshed, and when a refresh is in
   flight
 
+### Data source abstraction
+- All repository, pull request and check data reaches the UI through one trait,
+  not through direct API calls from view code
+- A live implementation backed by the GitHub API
+- A fixture implementation backed by a JSON snapshot committed to the repository
+- The fixture implementation is selectable at startup without recompiling, and
+  the application makes no network calls when it is active
+- The active data source is visible on screen, so fixture data is never mistaken
+  for live data
+- The fixture snapshot covers the states the UI must render: repositories with
+  and without open PRs, PRs that are passing, failing, pending, and with no CI
+  configured
+
 ## Out of Scope
 
 - Local clone state: branch, dirty files, ahead/behind counts
@@ -166,3 +188,8 @@ Implemented in Rust with ratatui.
   support before it becomes a problem, and what the default interval should be.
 - Whether the rolled-up repository CI glyph should reflect all open PRs or only
   the PRs matching the active filter.
+- How the fixture data source is selected at startup: a command-line flag, an
+  environment variable, or a setting in the configuration file.
+- Whether the fixture snapshot is handwritten or recorded from a real API
+  response, and if recorded, how it gets refreshed when the shape of the data
+  changes.
