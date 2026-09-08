@@ -8,6 +8,16 @@
 
 **Input**: Brainstorm document `brainstorm/01-devdash-tui.md`. Original description: "Build a developer dashboard TUI that shows my git repos, open PRs, and CI status in a single terminal view. Repos are configurable in a dedicated settings screen with drilldown by GitHub organization."
 
+## Clarifications
+
+### Session 2026-09-08
+
+- Q: Where should full error detail go, given that a TUI owns the screen and stderr is invisible while it runs? → A: A rolling log file in the platform's standard state directory, with the status bar showing the summary and naming the path.
+- Q: When a tracked repository is renamed or transferred on GitHub, should devdash follow it or treat it as gone? → A: Follow it. The tracked set is keyed on GitHub's stable numeric repository id, with owner and name stored alongside for readability and refreshed when they change.
+- Q: Should the four CI states be distinguishable without relying on colour? → A: Yes. Each state carries a distinct symbol; colour may reinforce it but never carries the meaning alone.
+- Q: What does the settings screen show while fetching an organization's repository list? → A: An explicit loading state that cannot be mistaken for an empty organization, replaced by the reason and a retry key on failure, mirroring the dashboard's treatment.
+- Q: If two instances both change the tracked set, what happens to the configuration file? → A: Neither instance clobbers the other. Before writing, an instance detects that the file changed since it read it, re-reads, merges the tracked set, then writes.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Survey open work across tracked repositories (Priority: P1)
@@ -46,6 +56,8 @@ The developer opens a settings screen from the dashboard, sees the GitHub organi
 5. **Given** repositories have been toggled, **When** the application is quit and relaunched, **Then** the same tracked set is present.
 6. **Given** the repository list of an organization is displayed, **When** the user presses the back key, **Then** the organization list is shown again with the previously selected organization still highlighted.
 7. **Given** the tracked set is empty on first launch, **When** the dashboard is displayed, **Then** it shows an empty state that names the settings key rather than a blank or error screen.
+8. **Given** an organization has been selected and its repositories are still being fetched, **When** the settings screen is displayed, **Then** it shows an explicit loading state distinguishable from an organization with no repositories, and the back key still works.
+9. **Given** an organization's repository list fails to load, **When** the settings screen is displayed, **Then** it shows the reason and the key that retries it, and the other organizations remain selectable.
 
 ---
 
@@ -127,7 +139,8 @@ The developer presses a key on a selected pull request and it opens in their bro
 ### Edge Cases
 
 - The tracked set is empty on first launch, so the dashboard has nothing to show.
-- A tracked repository has been deleted, renamed, or made inaccessible since it was added. It must not break the whole refresh.
+- A tracked repository has been deleted or made inaccessible since it was added. It must not break the whole refresh.
+- A tracked repository has been renamed or transferred to a different owner since it was added. It must continue to be tracked under its new name rather than reading as unreadable.
 - The credential is valid but not authorized for a specific organization, for example because that organization enforces SSO. Other organizations must still load.
 - The user belongs to no organizations at all, so only their personal account is available in settings.
 - An organization contains several hundred repositories, making the settings repository list long to scroll.
@@ -141,6 +154,9 @@ The developer presses a key on a selected pull request and it opens in their bro
 - A repository shows a failing indicator while the active filter hides every failing pull request, so the two panes appear to disagree.
 - The fixture snapshot file is absent or malformed.
 - The application is terminated abruptly, for example by a signal, and must not leave the terminal in an unusable state.
+- Two instances run at once and both change the tracked set, so one must not silently erase the other's changes.
+- The configuration file is hand-edited into an unparseable state, or a write is interrupted partway.
+- The terminal has no colour, so the CI states must remain distinguishable by symbol alone.
 
 ## Requirements *(mandatory)*
 
@@ -152,81 +168,92 @@ The developer presses a key on a selected pull request and it opens in their bro
 - **FR-002**: Each repository row MUST show the repository's full name including its owner, the number of open pull requests, and a rolled-up CI indicator. The count and the indicator MUST always describe all open pull requests of that repository, regardless of the active filter mode, so that the repository pane remains a constant overview of repository health.
 - **FR-003**: Each pull request row MUST show the pull request number, its title, its author, and its CI indicator.
 - **FR-004**: The CI indicator MUST distinguish four states from one another: all checks passing, at least one check failing, checks pending or running, and no checks configured. The no-checks state MUST NOT be presented in a way that could be read as failing.
-- **FR-005**: A repository's rolled-up CI indicator MUST be derived from the CI state of its open pull requests using this precedence: failing if any open pull request is failing, otherwise pending if any is pending, otherwise passing if at least one is passing, otherwise no-checks.
-- **FR-006**: A repository with no open pull requests MUST show no CI indicator at all. It MUST NOT be shown as no-checks, passing, or failing, because with nothing open there is nothing for CI to report.
-- **FR-007**: Users MUST be able to move the selection within the focused pane and move focus between the two panes using the keyboard.
-- **FR-008**: Changing the selected repository MUST update the pull request pane to that repository's open pull requests.
-- **FR-009**: Both panes MUST scroll when their contents exceed the available height, keeping the current selection visible.
-- **FR-010**: The dashboard MUST re-lay out correctly when the terminal is resized, and MUST show a readable message rather than corrupted output when the terminal is too small for the two-pane layout.
-- **FR-011**: The application MUST exit on a quit key and MUST restore the terminal to its prior state on exit, including when it exits because of an error.
-- **FR-012**: The key bindings available in the current context MUST be discoverable on screen without consulting documentation.
-- **FR-013**: Repositories MUST be ordered alphabetically by owner and then by repository name. Pull requests MUST be ordered by their last update time, most recent first.
+- **FR-005**: Each CI state MUST be carried by a distinct symbol, so that all four remain distinguishable with colour removed entirely. Colour MAY reinforce the state but MUST NOT be the only thing that separates one state from another.
+- **FR-006**: A repository's rolled-up CI indicator MUST be derived from the CI state of its open pull requests using this precedence: failing if any open pull request is failing, otherwise pending if any is pending, otherwise passing if at least one is passing, otherwise no-checks.
+- **FR-007**: A repository with no open pull requests MUST show no CI indicator at all. It MUST NOT be shown as no-checks, passing, or failing, because with nothing open there is nothing for CI to report.
+- **FR-008**: Users MUST be able to move the selection within the focused pane and move focus between the two panes using the keyboard.
+- **FR-009**: Changing the selected repository MUST update the pull request pane to that repository's open pull requests.
+- **FR-010**: Both panes MUST scroll when their contents exceed the available height, keeping the current selection visible.
+- **FR-011**: The dashboard MUST re-lay out correctly when the terminal is resized, and MUST show a readable message rather than corrupted output when the terminal is too small for the two-pane layout.
+- **FR-012**: The application MUST exit on a quit key and MUST restore the terminal to its prior state on exit, including when it exits because of an error.
+- **FR-013**: The key bindings available in the current context MUST be discoverable on screen without consulting documentation.
+- **FR-014**: Repositories MUST be ordered alphabetically by owner and then by repository name. Pull requests MUST be ordered by their last update time, most recent first.
 
 #### Repository configuration
 
-- **FR-014**: Users MUST be able to open a settings screen from the dashboard with a single key press, and return to the dashboard from it.
-- **FR-015**: The settings screen MUST list the GitHub organizations the authenticated user is a member of, together with the user's own personal account, as selectable entries.
-- **FR-016**: Selecting an organization MUST list the repositories within it that the authenticated user can access, each showing whether it is currently tracked.
-- **FR-017**: Users MUST be able to toggle any listed repository into or out of the tracked set, with the change reflected on screen immediately.
-- **FR-018**: Users MUST be able to navigate back from an organization's repository list to the organization list.
-- **FR-019**: The tracked repository set MUST be persisted to a user-level configuration file and MUST be restored on the next launch.
-- **FR-020**: Returning to the dashboard after changing the tracked set MUST show the updated set without requiring a restart.
-- **FR-021**: Archived repositories MUST be excluded from the settings repository list.
-- **FR-022**: When an organization's repositories cannot be listed, for example because the credential is not authorized for it, the settings screen MUST report that for the affected organization while leaving the others usable.
-- **FR-023**: When the organization list itself cannot be retrieved, the settings screen MUST report why and MUST still offer the user's personal account, so that repositories remain trackable.
+- **FR-015**: Users MUST be able to open a settings screen from the dashboard with a single key press, and return to the dashboard from it.
+- **FR-016**: The settings screen MUST list the GitHub organizations the authenticated user is a member of, together with the user's own personal account, as selectable entries.
+- **FR-017**: Selecting an organization MUST list the repositories within it that the authenticated user can access, each showing whether it is currently tracked.
+- **FR-018**: While an organization's repositories are being fetched, the settings screen MUST show an explicit loading state that cannot be mistaken for an organization with no repositories, and MUST remain responsive to the back key. If the fetch fails, the loading state MUST be replaced by the reason and the key that retries it.
+- **FR-019**: Users MUST be able to toggle any listed repository into or out of the tracked set, with the change reflected on screen immediately.
+- **FR-020**: Users MUST be able to navigate back from an organization's repository list to the organization list.
+- **FR-021**: The tracked repository set MUST be persisted to a user-level configuration file and MUST be restored on the next launch. Each entry MUST be keyed on GitHub's stable numeric repository id, and MUST also record the owner and name so the file stays readable and hand-editable.
+- **FR-022**: A tracked repository that has been renamed or transferred MUST continue to be tracked and MUST display its current owner and name, with the stored owner and name updated on the next successful refresh. A rename MUST NOT cause the repository to read as unreadable under FR-053.
+- **FR-023**: Before writing the configuration file, the application MUST detect whether the file changed since it was last read. If it did, the application MUST re-read it and merge the tracked set rather than overwriting, so that a second running instance's changes are never silently discarded.
+- **FR-024**: The configuration file MUST be written atomically, so that an interrupted write cannot leave a truncated or unparseable file behind.
+- **FR-025**: When the configuration file cannot be parsed, the application MUST report the problem and the path, MUST start with an empty tracked set, and MUST NOT overwrite the file until the user makes a change, so that a recoverable hand-edit is never destroyed.
+- **FR-026**: Returning to the dashboard after changing the tracked set MUST show the updated set without requiring a restart.
+- **FR-027**: Archived repositories MUST be excluded from the settings repository list.
+- **FR-028**: When an organization's repositories cannot be listed, for example because the credential is not authorized for it, the settings screen MUST report that for the affected organization while leaving the others usable.
+- **FR-029**: When the organization list itself cannot be retrieved, the settings screen MUST report why and MUST still offer the user's personal account, so that repositories remain trackable.
 
 #### Filtering
 
-- **FR-024**: The pull request pane MUST support three filter modes: all open pull requests, pull requests authored by the authenticated user, and pull requests where the authenticated user's review has been requested.
-- **FR-025**: The "review requested" mode MUST match both pull requests that name the authenticated user directly as a reviewer and pull requests that name a team the authenticated user belongs to.
-- **FR-026**: When the authenticated user's team memberships cannot be determined, the "review requested" mode MUST fall back to direct requests only and MUST indicate on screen that team-based requests are not included, rather than silently returning an incomplete list.
-- **FR-027**: The active filter mode MUST be visible on screen at all times.
-- **FR-028**: The filter mode MUST default to "all open pull requests" at startup.
-- **FR-029**: Changing the selected repository MUST NOT reset the active filter mode.
-- **FR-030**: When a filter yields no results for a repository that does have open pull requests, the pane MUST say that no pull requests match the filter, distinct from the message shown when the repository has no open pull requests at all.
+- **FR-030**: The pull request pane MUST support three filter modes: all open pull requests, pull requests authored by the authenticated user, and pull requests where the authenticated user's review has been requested.
+- **FR-031**: The "review requested" mode MUST match both pull requests that name the authenticated user directly as a reviewer and pull requests that name a team the authenticated user belongs to.
+- **FR-032**: When the authenticated user's team memberships cannot be determined, the "review requested" mode MUST fall back to direct requests only and MUST indicate on screen that team-based requests are not included, rather than silently returning an incomplete list.
+- **FR-033**: The active filter mode MUST be visible on screen at all times.
+- **FR-034**: The filter mode MUST default to "all open pull requests" at startup.
+- **FR-035**: Changing the selected repository MUST NOT reset the active filter mode.
+- **FR-036**: When a filter yields no results for a repository that does have open pull requests, the pane MUST say that no pull requests match the filter, distinct from the message shown when the repository has no open pull requests at all.
 
 #### Authentication and credentials
 
-- **FR-031**: The application MUST obtain its API credential from an authenticated `gh` CLI installation, and MUST fall back to the `GITHUB_TOKEN` environment variable when that is unavailable.
-- **FR-032**: The application MUST NOT write any credential to its configuration file, to logs, or to the screen, and MUST NOT offer any way to enter a credential within the application.
-- **FR-033**: When the live data source is selected and no credential can be obtained, the application MUST report which mechanisms it tried and exit without a panic, rather than presenting an empty dashboard.
-- **FR-034**: The application MUST determine the authenticated user's identity and their team memberships, since the filter modes depend on both.
+- **FR-037**: The application MUST obtain its API credential from an authenticated `gh` CLI installation, and MUST fall back to the `GITHUB_TOKEN` environment variable when that is unavailable.
+- **FR-038**: The application MUST NOT write any credential to its configuration file, to logs, or to the screen, and MUST NOT offer any way to enter a credential within the application.
+- **FR-039**: When the live data source is selected and no credential can be obtained, the application MUST report which mechanisms it tried and exit without a panic, rather than presenting an empty dashboard.
+- **FR-040**: The application MUST determine the authenticated user's identity and their team memberships, since the filter modes depend on both.
 
 #### Data freshness
 
-- **FR-035**: The application MUST fetch data once at startup.
-- **FR-036**: Before the first fetch completes, the dashboard MUST display its layout with an explicit loading state in place of repository and pull request content, and MUST accept the quit key throughout.
-- **FR-037**: When the first fetch of a run fails, the dashboard MUST replace the loading state with the reason it failed and the key that retries it. It MUST NOT present an empty repository pane that is indistinguishable from a tracked set of zero repositories.
-- **FR-038**: Repositories MUST populate the dashboard progressively as their data resolves, rather than the whole view waiting on the slowest repository. A repository whose data has not resolved yet MUST read as pending rather than being shown with a count of zero or a settled CI indicator.
-- **FR-039**: Selection state MUST survive a refresh. After a refresh, the selected repository and the selected pull request MUST remain the same items they were before, even if their positions changed. When a selected item is no longer present, the selection MUST move to the nearest surviving item in the previous ordering rather than jumping to the top of the list.
-- **FR-040**: The application MUST refresh data automatically on a configurable interval.
-- **FR-041**: Users MUST be able to trigger an immediate refresh with a key press.
-- **FR-042**: The interface MUST remain responsive to navigation and filter keys while a refresh is in flight.
-- **FR-043**: The application MUST show when a refresh is in flight and the time of the last successful refresh.
-- **FR-044**: A failed refresh MUST leave the previously fetched data on screen and surface an error indicator, rather than clearing the view or exiting.
-- **FR-045**: When the API rate limit is exhausted, the application MUST report it together with the time the limit resets, and MUST suspend automatic refreshes until then.
-- **FR-046**: A refresh requested while one is already in flight MUST NOT start a second concurrent refresh.
-- **FR-047**: A tracked repository that can no longer be read MUST remain in the repository pane, showing an unreadable marker in place of its pull request count and CI indicator, together with the reason. Selecting it MUST show that reason in the pull request pane. The remaining repositories MUST refresh normally.
+- **FR-041**: The application MUST fetch data once at startup.
+- **FR-042**: Before the first fetch completes, the dashboard MUST display its layout with an explicit loading state in place of repository and pull request content, and MUST accept the quit key throughout.
+- **FR-043**: When the first fetch of a run fails, the dashboard MUST replace the loading state with the reason it failed and the key that retries it. It MUST NOT present an empty repository pane that is indistinguishable from a tracked set of zero repositories.
+- **FR-044**: Repositories MUST populate the dashboard progressively as their data resolves, rather than the whole view waiting on the slowest repository. A repository whose data has not resolved yet MUST read as pending rather than being shown with a count of zero or a settled CI indicator.
+- **FR-045**: Selection state MUST survive a refresh. After a refresh, the selected repository and the selected pull request MUST remain the same items they were before, even if their positions changed. When a selected item is no longer present, the selection MUST move to the nearest surviving item in the previous ordering rather than jumping to the top of the list.
+- **FR-046**: The application MUST refresh data automatically on a configurable interval.
+- **FR-047**: Users MUST be able to trigger an immediate refresh with a key press.
+- **FR-048**: The interface MUST remain responsive to navigation and filter keys while a refresh is in flight.
+- **FR-049**: The application MUST show when a refresh is in flight and the time of the last successful refresh.
+- **FR-050**: A failed refresh MUST leave the previously fetched data on screen and surface an error indicator, rather than clearing the view or exiting.
+- **FR-051**: When the API rate limit is exhausted, the application MUST report it together with the time the limit resets, and MUST suspend automatic refreshes until then.
+- **FR-052**: A refresh requested while one is already in flight MUST NOT start a second concurrent refresh.
+- **FR-053**: A tracked repository that can no longer be read MUST remain in the repository pane, showing an unreadable marker in place of its pull request count and CI indicator, together with the reason. Selecting it MUST show that reason in the pull request pane. The remaining repositories MUST refresh normally.
 
 #### Data source selection
 
-- **FR-048**: All repository, pull request and check data MUST reach the interface through a single data access abstraction with interchangeable implementations, rather than through calls made from view code.
-- **FR-049**: The application MUST provide a live implementation backed by the GitHub API and a fixture implementation backed by a snapshot committed to the repository.
-- **FR-050**: The data source MUST be selectable at startup without recompiling the application.
-- **FR-051**: When the fixture data source is active, the application MUST make no network requests.
-- **FR-052**: The active data source MUST be identified on screen whenever it is not the live source, so fixture data can never be mistaken for live data.
-- **FR-053**: The fixture snapshot MUST cover the states the interface has to render: a repository with open pull requests, a repository with none, and pull requests that are passing, failing, pending, and without CI configured, including at least one authored by the fixture user, one with a review requested from them directly, and one with a review requested from a team they belong to.
-- **FR-054**: A missing or malformed fixture snapshot MUST produce a message naming the path and the problem, and an exit without a panic.
+- **FR-054**: All repository, pull request and check data MUST reach the interface through a single data access abstraction with interchangeable implementations, rather than through calls made from view code.
+- **FR-055**: The application MUST provide a live implementation backed by the GitHub API and a fixture implementation backed by a snapshot committed to the repository.
+- **FR-056**: The data source MUST be selectable at startup without recompiling the application.
+- **FR-057**: When the fixture data source is active, the application MUST make no network requests.
+- **FR-058**: The active data source MUST be identified on screen whenever it is not the live source, so fixture data can never be mistaken for live data.
+- **FR-059**: The fixture snapshot MUST cover the states the interface has to render: a repository with open pull requests, a repository with none, and pull requests that are passing, failing, pending, and without CI configured, including at least one authored by the fixture user, one with a review requested from them directly, and one with a review requested from a team they belong to.
+- **FR-060**: A missing or malformed fixture snapshot MUST produce a message naming the path and the problem, and an exit without a panic.
 
 #### Pull request handoff
 
-- **FR-055**: Users MUST be able to open the selected pull request in the system browser with a key press, without the dashboard exiting.
-- **FR-056**: When no browser can be launched, the application MUST report that and display the pull request's URL.
+- **FR-061**: Users MUST be able to open the selected pull request in the system browser with a key press, without the dashboard exiting.
+- **FR-062**: When no browser can be launched, the application MUST report that and display the pull request's URL.
+
+#### Diagnostics
+
+- **FR-063**: The application MUST write a log file to the platform's standard state directory, recording the detail behind every error it surfaces on screen, including the failing repository or organization and the underlying reason. The log MUST be bounded in size so that it cannot grow without limit across runs.
+- **FR-064**: Whenever an error indicator is shown, the interface MUST also make the log file's path discoverable, so the user can reach the detail behind the summary without knowing where to look.
 
 ### Key Entities
 
 - **Organization**: A GitHub account that owns repositories, either an organization the user belongs to or the user's own personal account. Selecting one lists its repositories in settings.
-- **Repository**: A GitHub repository identified by owner and name. Carries its set of open pull requests, a rolled-up CI state derived from them, and whether it is currently tracked.
+- **Repository**: A GitHub repository. Its identity is GitHub's stable numeric id, which survives renames and transfers; owner and name are display attributes that may change. Carries its set of open pull requests, a rolled-up CI state derived from them, and whether it is currently tracked.
 - **Pull Request**: An open pull request on a repository. Carries a number, title, author, last update time, its requested reviewers as both individuals and teams, a CI state, and a web address.
 - **CI State**: The rolled-up outcome of the checks on a pull request's head commit, being exactly one of passing, failing, pending, or no checks configured.
 - **Tracked Set**: The user's chosen collection of repositories, persisted between runs. It is the input to the dashboard's repository pane.
@@ -249,6 +276,8 @@ The developer presses a key on a selected pull request and it opens in their bro
 - **SC-009**: A refresh that fails, times out, or hits the rate limit never leaves the user with a blank screen, a crash, or a corrupted terminal. Previously fetched data stays visible in every such case.
 - **SC-010**: Quitting and relaunching restores the identical tracked set with no reconfiguration.
 - **SC-011**: A user can tell at a glance whether the data on screen is live or fixture data, and how old it is.
+- **SC-013**: All four CI states remain correctly identifiable with colour removed from the terminal entirely.
+- **SC-014**: For every error the user sees summarized on screen, the underlying cause can be found in the log file, whose path the interface makes discoverable.
 - **SC-012**: An inaccessible or deleted tracked repository degrades to a marked row and never prevents the other tracked repositories from refreshing.
 
 ## Out of Scope
@@ -277,10 +306,10 @@ These are reasonable defaults chosen where the brainstorm left a question open. 
 - **Draft pull requests**: Draft pull requests are open pull requests and are included.
 - **Forks**: Forked repositories appear in the settings repository list. Archived ones do not.
 - **Filter persistence**: The active filter mode is session state and resets to "all" on each launch. Only the tracked set is persisted.
-- **Token scope**: The credential is expected to carry enough scope to read the user's organization and team memberships. Without it the "awaiting my review" filter degrades to direct requests only, per FR-026, and everything else continues to work.
+- **Token scope**: The credential is expected to carry enough scope to read the user's organization and team memberships. Without it the "awaiting my review" filter degrades to direct requests only, per FR-032, and everything else continues to work.
 - **Fixture selection**: The fixture data source is selected by a command-line flag at startup, consistent with how command-line tools are normally switched into alternative modes.
 - **Fixture authoring**: The fixture snapshot is hand-authored and committed, rather than recorded from a live API response, so that it can be edited directly to cover a new interface state without capturing traffic.
-- **Terminal capability**: The terminal supports Unicode and colour. A pure-ASCII rendering mode is not required.
+- **Terminal capability**: The terminal supports Unicode. A pure-ASCII rendering mode is not required. Colour is used where available but is never load-bearing, per FR-005, so a monochrome terminal loses no information.
 - **Read-only tool**: The application never writes to GitHub. Every action that would change state is delegated to the browser.
 
 ## Dependencies

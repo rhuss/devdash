@@ -113,6 +113,44 @@ team-membership consequences.
 All checklist items pass. Final counts: 56 functional requirements,
 12 success criteria, 6 user stories, 0 unresolved markers.
 
+### Iteration 4 (2026-09-08) - clarify session
+
+Five clarifications asked and integrated. Checklist state unchanged at 16/16;
+these closed gaps the checklist does not itself test for, rather than fixing
+failures.
+
+1. **Observability was entirely absent.** The spec mentioned logs only as a place
+   credentials must not appear, never as something the application produces. In a
+   TUI, stderr is invisible while running, so a failed refresh gave an indicator
+   and no way to reach the cause. Added a Diagnostics subsection: a bounded
+   rolling log file in the platform state directory, with its path discoverable
+   from any error indicator. SC-014 now measures it, and SC-008's existing "no
+   credential in log output" clause becomes meaningful rather than hypothetical.
+2. **Repository identity was name-based, so renames lost repositories.** The
+   Repository entity was "identified by owner and name" while the edge cases
+   listed renames without resolving them. The tracked set is now keyed on
+   GitHub's stable numeric id with owner and name kept alongside for
+   readability, and a rename explicitly does not trigger the unreadable path.
+3. **CI state encoding was unspecified.** FR-004 required four distinguishable
+   states without saying what carries the distinction, and the assumptions took
+   colour for granted. Colour alone would have failed red/green colour blindness
+   and monochrome terminals, and would have forced tests to inspect style
+   attributes. Each state now carries a distinct symbol, colour reinforces only,
+   and SC-013 measures it.
+4. **The settings screen had no loading or failure state.** FR-036 and FR-037
+   covered the dashboard only, leaving an in-flight organization fetch
+   indistinguishable from an empty organization. Now mirrors the dashboard's
+   treatment, with two acceptance scenarios.
+5. **Concurrent instances silently clobbered each other.** Nothing addressed two
+   running copies writing the tracked set. Writes now detect an external change,
+   re-read and merge; the file is written atomically; and an unparseable file is
+   reported rather than overwritten.
+
+Requirements grew from 56 to 64 and success criteria from 12 to 14. All
+requirements were renumbered once at the end of the session, and the three
+cross-references were re-resolved by matching requirement text rather than
+by number.
+
 ### Resolved by informed default (documented in the Assumptions section)
 
 The remaining open questions carried over from `brainstorm/01-devdash-tui.md` were

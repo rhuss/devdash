@@ -4,7 +4,7 @@
   "feature_branch": "001-devdash-tui",
   "spec_dir": "specs/001-devdash-tui",
   "implemented": false,
-  "clarified": false,
+  "clarified": true,
   "triage_spec_passed": false,
   "triage_impl_passed": false,
   "running": "",
