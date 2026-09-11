@@ -188,6 +188,7 @@ fn handle_settings_repos_key(
         }
         KeyCode::Char('r') => {
             if matches!(org_state, OrgRepoState::Failed { .. }) {
+                state.org_fetch_requested = Some(org.clone());
                 Screen::Settings(SettingsScreen::Repositories {
                     org,
                     state: OrgRepoState::Loading,
@@ -211,7 +212,7 @@ fn persist_config(state: &AppState) {
         return;
     }
     let cfg = config::Config {
-        refresh_interval_secs: 300,
+        refresh_interval_secs: state.refresh_interval_secs,
         tracked: state.tracked.clone(),
     };
     if let Err(e) = config::save(&cfg, &state.config_path, &state.untracked_ids) {

@@ -268,11 +268,13 @@ fn filtered_pulls<'a>(
 }
 
 fn truncate_title(title: &str, max_len: usize) -> String {
-    if title.len() <= max_len {
+    let char_count = title.chars().count();
+    if char_count <= max_len {
         title.to_string()
     } else if max_len > 3 {
-        format!("{}...", &title[..max_len - 3])
+        let truncated: String = title.chars().take(max_len - 3).collect();
+        format!("{truncated}...")
     } else {
-        title[..max_len].to_string()
+        title.chars().take(max_len).collect()
     }
 }

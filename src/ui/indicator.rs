@@ -12,11 +12,3 @@ pub fn ci_indicator(state: CiState) -> Span<'static> {
     }
 }
 
-pub const fn ci_indicator_text(state: CiState) -> &'static str {
-    match state {
-        CiState::Passing => "✓",
-        CiState::Failing => "✗",
-        CiState::Pending => "●",
-        CiState::NoChecks => "○",
-    }
-}

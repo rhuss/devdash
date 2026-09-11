@@ -136,6 +136,7 @@ pub struct AppState {
     pub untracked_ids: HashSet<RepoId>,
     pub settings_state: SettingsState,
     pub org_fetch_requested: Option<String>,
+    pub refresh_interval_secs: u64,
 }
 
 impl AppState {
@@ -157,6 +158,7 @@ impl AppState {
             untracked_ids: HashSet::new(),
             settings_state: SettingsState::default(),
             org_fetch_requested: None,
+            refresh_interval_secs: 300,
         }
     }
 

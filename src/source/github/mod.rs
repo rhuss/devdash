@@ -169,7 +169,7 @@ impl DataSource for GithubDataSource {
 
             all_repos.extend(repos);
 
-            if page_info.has_next_page {
+            if page_info.has_next_page && page_info.end_cursor.is_some() {
                 after = page_info.end_cursor;
             } else {
                 break;

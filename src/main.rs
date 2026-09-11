@@ -100,6 +100,7 @@ async fn run() -> Result<()> {
     let mut state = AppState::new(source_kind, log_path);
     state.config_path = config_path.clone();
     state.tracked = cfg.tracked.clone();
+    state.refresh_interval_secs = cfg.refresh_interval_secs;
 
     let mut terminal = setup_terminal()?;
 
@@ -186,11 +187,15 @@ async fn run() -> Result<()> {
                         }
                     }
                 }
-                Event::ViewerData(result) => {
-                    if let Ok(viewer) = result {
+                Event::ViewerData(result) => match result {
+                    Ok(viewer) => {
                         state.viewer = Some(viewer);
                     }
-                }
+                    Err(ref e) => {
+                        tracing::error!("Failed to load viewer data: {e}");
+                        state.refresh.last_error = Some(format!("viewer: {e}"));
+                    }
+                },
                 Event::OrgRepoData { org, result } => {
                     if let Screen::Settings(SettingsScreen::Repositories {
                         org: ref current_org,

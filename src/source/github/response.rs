@@ -9,8 +9,6 @@ use crate::source::{RepoPayload, RepositoryData, SourceError};
 
 pub struct DashboardResponse {
     pub repositories: Vec<RepositoryData>,
-    pub rate_limit_remaining: Option<u64>,
-    pub rate_limit_reset: Option<OffsetDateTime>,
 }
 
 pub struct PageInfo {
@@ -168,19 +166,7 @@ pub fn parse_dashboard(
         let _ = page_info; // pagination handled by caller
     }
 
-    let rate_limit = data.get("rateLimit");
-    let rate_limit_remaining = rate_limit.and_then(|rl| rl["remaining"].as_u64());
-    let rate_limit_reset = rate_limit
-        .and_then(|rl| rl["resetAt"].as_str())
-        .and_then(|s| {
-            OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339).ok()
-        });
-
-    DashboardResponse {
-        repositories,
-        rate_limit_remaining,
-        rate_limit_reset,
-    }
+    DashboardResponse { repositories }
 }
 
 pub fn parse_page_info(prs_data: &Value) -> PageInfo {

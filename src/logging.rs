@@ -14,6 +14,8 @@ pub fn init(log_path: &Path, level: &str) -> WorkerGuard {
 
     std::fs::create_dir_all(parent).ok();
 
+    cleanup_old_logs(parent, 7);
+
     let file_appender = rolling::daily(parent, filename);
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
@@ -27,6 +29,27 @@ pub fn init(log_path: &Path, level: &str) -> WorkerGuard {
         .init();
 
     guard
+}
+
+fn cleanup_old_logs(dir: &Path, max_files: usize) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut log_files: Vec<_> = entries
+        .filter_map(std::result::Result::ok)
+        .filter(|e| {
+            e.file_name()
+                .to_str()
+                .is_some_and(|n| n.starts_with("devdash.log"))
+        })
+        .collect();
+    if log_files.len() <= max_files {
+        return;
+    }
+    log_files.sort_by_key(|e| std::cmp::Reverse(e.metadata().and_then(|m| m.modified()).ok()));
+    for old in &log_files[max_files..] {
+        let _ = std::fs::remove_file(old.path());
+    }
 }
 
 pub fn log_path() -> PathBuf {

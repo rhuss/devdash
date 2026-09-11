@@ -50,10 +50,6 @@ impl FixtureDataSource {
             path: path.to_path_buf(),
         })
     }
-
-    pub fn path(&self) -> &Path {
-        &self.path
-    }
 }
 
 #[async_trait]

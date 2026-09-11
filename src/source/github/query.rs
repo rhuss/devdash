@@ -2,6 +2,10 @@
 
 use crate::domain::TrackedRepo;
 
+fn gql_escape(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
 const PR_NODE_FIELDS: &str = r#"
         number
         title
@@ -39,10 +43,12 @@ pub fn teams_query(orgs: &[String], login: &str) -> String {
         return r#"query Teams { rateLimit { cost remaining } }"#.to_string();
     }
 
+    let login = gql_escape(login);
     let aliases: Vec<String> = orgs
         .iter()
         .enumerate()
         .map(|(i, org)| {
+            let org = gql_escape(org);
             format!(
                 r#"  o{i}: organization(login: "{org}") {{
     teams(first: 100, userLogins: ["{login}"]) {{ nodes {{ slug }} }}
@@ -66,6 +72,8 @@ pub fn dashboard_query(tracked: &[TrackedRepo]) -> String {
         .iter()
         .enumerate()
         .map(|(i, repo)| {
+            let owner = gql_escape(&repo.owner);
+            let name = gql_escape(&repo.name);
             format!(
                 r#"  r{i}: repository(owner: "{owner}", name: "{name}") {{
     databaseId
@@ -75,9 +83,7 @@ pub fn dashboard_query(tracked: &[TrackedRepo]) -> String {
       pageInfo {{ hasNextPage endCursor }}
       nodes {{{PR_NODE_FIELDS}      }}
     }}
-  }}"#,
-                owner = repo.owner,
-                name = repo.name,
+  }}"#
             )
         })
         .collect();
@@ -89,6 +95,9 @@ pub fn dashboard_query(tracked: &[TrackedRepo]) -> String {
 }
 
 pub fn pagination_query(owner: &str, name: &str, after: &str) -> String {
+    let owner = gql_escape(owner);
+    let name = gql_escape(name);
+    let after = gql_escape(after);
     format!(
         r#"query DashboardPage {{
   repository(owner: "{owner}", name: "{name}") {{
@@ -104,8 +113,9 @@ pub fn pagination_query(owner: &str, name: &str, after: &str) -> String {
 }
 
 pub fn org_repos_query(org: &str, after: Option<&str>) -> String {
+    let org = gql_escape(org);
     let after_arg = match after {
-        Some(cursor) => format!(r#", after: "{cursor}""#),
+        Some(cursor) => format!(r#", after: "{}""#, gql_escape(cursor)),
         None => String::new(),
     };
 
