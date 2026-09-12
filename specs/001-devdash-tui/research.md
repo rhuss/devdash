@@ -37,10 +37,11 @@ than tight, and makes the rate-limit budget a non-issue at the specified scale.
   the rate-limit story materially worse for a five-minute refresh interval.
 
 **Consequence for the spec**: the Eager check fetching assumption is more pessimistic
-than reality. It is not wrong as a requirement, and its conclusion (a refresh
-interval measured in minutes) still holds, but the concurrency it calls for is
-largely unnecessary. FR-044 (progressive population) remains worth implementing for
-the settings screen and for the multi-page case in R11.
+than reality. Its conclusion (a refresh interval measured in minutes) still holds,
+but the concurrency it calls for is largely unnecessary. This finding is what the
+2026-09-12 reconciliation acted on: FR-044 now describes the tracked set resolving
+as one batched unit with per-repository results, and `RepoStatus::Pending` covers a
+repository no refresh has reached yet rather than one mid-flight.
 
 ## R2: CI state maps natively to statusCheckRollup
 

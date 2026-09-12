@@ -210,7 +210,7 @@ demonstrable, which is what makes this suitable for a live walkthrough.
 | 1 | Foundation | Domain types, CI rollup, fixture source, terminal lifecycle | FR-004..FR-007, FR-012, FR-054..FR-060 |
 | 2 | US1 (P1) | Two-pane dashboard rendering against fixtures | FR-001..FR-014 |
 | 3 | Live data | Auth, GraphQL client, config load, first fetch | FR-021, FR-037..FR-043 |
-| 4 | US2 (P2) | Settings screen, tracked set persistence and merge | FR-015..FR-029 |
+| 4 | US2 (P2) | Settings screen, tracked set persistence and merge | FR-015..FR-029, FR-065 |
 | 5 | US4 (P4) | Filter modes including team-directed requests | FR-030..FR-036 |
 | 6 | US5 (P5) | Interval and manual refresh, freshness, failure handling | FR-044..FR-053 |
 | 7 | US6 (P6) | Browser handoff | FR-061, FR-062 |

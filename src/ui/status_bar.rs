@@ -4,7 +4,7 @@ use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
-use crate::app::state::{AppState, FilterMode, Screen};
+use crate::app::state::{AppState, FilterMode, Screen, SettingsScreen};
 use crate::source::SourceKind;
 
 pub fn render(state: &AppState, frame: &mut Frame, area: Rect) {
@@ -85,17 +85,38 @@ pub fn render(state: &AppState, frame: &mut Frame, area: Rect) {
     }
 
     if let Some(ref msg) = state.status_message {
-        spans.push(Span::styled(
-            format!(" {msg}"),
-            Style::default().fg(Color::Yellow),
-        ));
+        if state.status_is_error {
+            // FR-064: an error indicator names the log file holding the detail.
+            spans.push(Span::styled(
+                format!(" ⚠ {msg}"),
+                Style::default().fg(Color::Red),
+            ));
+            spans.push(Span::styled(
+                format!(" (log: {})", state.log_path.display()),
+                Style::default().fg(Color::DarkGray),
+            ));
+        } else {
+            spans.push(Span::styled(
+                format!(" {msg}"),
+                Style::default().fg(Color::Yellow),
+            ));
+        }
     }
 
     // Spacer to push key hints to the right
     let left_len: usize = spans.iter().map(|s| s.content.len()).sum();
     let hints = match &state.screen {
         Screen::Dashboard => "↑↓:nav ←→:pane a/m/v:filter s:settings r:refresh Enter:open q:quit",
-        Screen::Settings(_) => "↑↓:nav Enter:select Space:toggle Esc:back q:quit",
+        Screen::Settings(SettingsScreen::Organizations) => {
+            if state.viewer.is_none() {
+                "r:retry Esc:dashboard q:quit"
+            } else {
+                "↑↓:nav Enter:open Esc:dashboard q:quit"
+            }
+        }
+        Screen::Settings(SettingsScreen::Repositories { .. }) => {
+            "↑↓:nav Space:toggle Esc:orgs s:dashboard q:quit"
+        }
         Screen::Loading => "q:quit",
         Screen::LoadFailed { .. } => "r:retry q:quit",
     };

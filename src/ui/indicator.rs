@@ -11,4 +11,3 @@ pub fn ci_indicator(state: CiState) -> Span<'static> {
         CiState::NoChecks => Span::styled("○", Style::default().fg(Color::DarkGray)),
     }
 }
-

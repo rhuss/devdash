@@ -24,15 +24,16 @@ pub fn render(state: &AppState, frame: &mut Frame) {
 
     match &state.screen {
         Screen::Dashboard => dashboard::render(state, frame, area),
+        // FR-042: the loading state belongs inside the dashboard's own layout.
+        Screen::Loading => dashboard::render_loading(state, frame, area),
         other => {
             let chunks = Layout::vertical([Constraint::Min(3), Constraint::Length(1)]).split(area);
             match other {
-                Screen::Loading => render_loading(frame, chunks[0]),
                 Screen::LoadFailed { reason } => render_load_failed(frame, chunks[0], reason),
                 Screen::Settings(settings_screen) => {
                     settings::render(state, settings_screen, frame, chunks[0]);
                 }
-                Screen::Dashboard => unreachable!(),
+                Screen::Dashboard | Screen::Loading => unreachable!(),
             }
             status_bar::render(state, frame, chunks[1]);
         }
@@ -43,28 +44,6 @@ fn render_too_small(frame: &mut Frame, area: Rect) {
     let msg = Paragraph::new("Terminal too small. Resize to continue.")
         .style(Style::default().fg(Color::Yellow));
     frame.render_widget(msg, area);
-}
-
-fn render_loading(frame: &mut Frame, area: Rect) {
-    let chunks = Layout::vertical([
-        Constraint::Fill(1),
-        Constraint::Length(3),
-        Constraint::Fill(1),
-    ])
-    .split(area);
-
-    let loading = Paragraph::new(Line::from(vec![Span::styled(
-        " Loading...",
-        Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD),
-    )]))
-    .block(Block::default().borders(Borders::ALL).title(" devdash "));
-
-    frame.render_widget(loading, chunks[1]);
-
-    let hint = Paragraph::new(" Press q to quit").style(Style::default().fg(Color::DarkGray));
-    frame.render_widget(hint, chunks[2]);
 }
 
 fn render_load_failed(frame: &mut Frame, area: Rect, reason: &str) {

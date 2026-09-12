@@ -18,6 +18,14 @@
 - Q: What does the settings screen show while fetching an organization's repository list? → A: An explicit loading state that cannot be mistaken for an empty organization, replaced by the reason and a retry key on failure, mirroring the dashboard's treatment.
 - Q: If two instances both change the tracked set, what happens to the configuration file? → A: Neither instance clobbers the other. Before writing, an instance detects that the file changed since it read it, re-reads, merges the tracked set, then writes.
 
+### Session 2026-09-12 (spec and code reconciliation)
+
+Three mismatches between this specification and the implementation were resolved by changing the specification. The rest were resolved by changing the code and left this document untouched.
+
+- Q: FR-044 asked for repositories to fill the dashboard one at a time as they resolved, and the assumptions predicted well over a hundred concurrent requests. The implementation instead fetches the whole tracked set in one batched query. Which is right? → A: The batched fetch. It costs a handful of API calls instead of one per repository, which is what keeps a refresh inside normal rate limits. FR-044, SC-004 and the eager-check assumption now describe the tracked set resolving as a single unit, and "pending" is reserved for a repository no refresh has covered yet.
+- Q: FR-029 promised the user's personal account would still be offered when the organization list could not be retrieved, but identity and organization list arrive from the same call, so a failure leaves no login to offer. → A: They cannot fail independently. FR-029 now requires the reason, the log file's path, and a key that retries the retrieval, instead of an account whose name is unknown.
+- Q: Should a persisted change to the tracked set be confirmed on screen, and should a failed write be visible? → A: Yes to both. A silent failed write is indistinguishable from a successful one. Added as FR-065.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Survey open work across tracked repositories (Priority: P1)
@@ -58,6 +66,8 @@ The developer opens a settings screen from the dashboard, sees the GitHub organi
 7. **Given** the tracked set is empty on first launch, **When** the dashboard is displayed, **Then** it shows an empty state that names the settings key rather than a blank or error screen.
 8. **Given** an organization has been selected and its repositories are still being fetched, **When** the settings screen is displayed, **Then** it shows an explicit loading state distinguishable from an organization with no repositories, and the back key still works.
 9. **Given** an organization's repository list fails to load, **When** the settings screen is displayed, **Then** it shows the reason and the key that retries it, and the other organizations remain selectable.
+10. **Given** the repository list of an organization is displayed, **When** the user toggles a repository, **Then** the screen confirms that the change was saved, and a write that fails says so and names the log file rather than looking identical to a success.
+11. **Given** the authenticated user's account and organizations cannot be retrieved, **When** the settings screen is displayed, **Then** it shows the reason, names the log file, and offers a key that retries the retrieval.
 
 ---
 
@@ -115,7 +125,7 @@ The data refreshes on its own periodically and on demand. The developer can alwa
 5. **Given** the credential's API rate limit has been exhausted, **When** a refresh is attempted, **Then** the application reports the exhaustion and the time the limit resets, and does not issue further automatic refreshes before that time.
 6. **Given** the application has just launched and the first fetch has not returned, **When** the dashboard is displayed, **Then** it shows its layout with an explicit loading state and responds to the quit key.
 7. **Given** the very first fetch of a run fails, **When** the dashboard is displayed, **Then** it shows the reason and the retry key, rather than an empty repository pane that could be mistaken for an empty tracked set.
-8. **Given** a tracked set where some repositories resolve faster than others, **When** the first fetch is in progress, **Then** resolved repositories appear with their counts and indicators while unresolved ones read as pending, rather than the whole pane waiting on the slowest.
+8. **Given** a tracked set that has just gained a repository, **When** the refresh covering it has not yet returned, **Then** that repository is already listed and reads as pending, while the repositories already resolved keep their counts and indicators.
 9. **Given** a repository and a pull request are selected and a refresh reorders the pull request list, **When** the refresh completes, **Then** the same repository and the same pull request remain selected.
 10. **Given** the selected pull request has been closed and disappears in a refresh, **When** the refresh completes, **Then** the selection moves to the nearest remaining pull request rather than jumping to the top of the list.
 
@@ -195,7 +205,8 @@ The developer presses a key on a selected pull request and it opens in their bro
 - **FR-026**: Returning to the dashboard after changing the tracked set MUST show the updated set without requiring a restart.
 - **FR-027**: Archived repositories MUST be excluded from the settings repository list.
 - **FR-028**: When an organization's repositories cannot be listed, for example because the credential is not authorized for it, the settings screen MUST report that for the affected organization while leaving the others usable.
-- **FR-029**: When the organization list itself cannot be retrieved, the settings screen MUST report why and MUST still offer the user's personal account, so that repositories remain trackable.
+- **FR-029**: The authenticated user's identity and their organization list are retrieved together, so neither can be offered without the other. When that retrieval fails, the settings screen MUST report the reason, MUST make the log file's path discoverable per FR-064, and MUST offer a key that retries it, rather than presenting an empty list that reads as a user who belongs to no organizations. While the retrieval is still in flight, the screen MUST read as loading rather than as empty.
+- **FR-065**: A change to the tracked set MUST be confirmed on screen once it has been persisted, and a write that fails MUST be reported on screen together with the log file's path rather than being recorded only in the log. The confirmation belongs to the settings screen and MUST NOT follow the user back to the dashboard.
 
 #### Filtering
 
@@ -219,7 +230,7 @@ The developer presses a key on a selected pull request and it opens in their bro
 - **FR-041**: The application MUST fetch data once at startup.
 - **FR-042**: Before the first fetch completes, the dashboard MUST display its layout with an explicit loading state in place of repository and pull request content, and MUST accept the quit key throughout.
 - **FR-043**: When the first fetch of a run fails, the dashboard MUST replace the loading state with the reason it failed and the key that retries it. It MUST NOT present an empty repository pane that is indistinguishable from a tracked set of zero repositories.
-- **FR-044**: Repositories MUST populate the dashboard progressively as their data resolves, rather than the whole view waiting on the slowest repository. A repository whose data has not resolved yet MUST read as pending rather than being shown with a count of zero or a settled CI indicator.
+- **FR-044**: A refresh MUST resolve the whole tracked set as a single unit of work rather than one request per repository, and MUST carry a per-repository result so that one unreadable repository cannot fail the others. A repository that no refresh has covered yet, for example one just added to the tracked set, MUST read as pending rather than being shown with a count of zero or a settled CI indicator.
 - **FR-045**: Selection state MUST survive a refresh. After a refresh, the selected repository and the selected pull request MUST remain the same items they were before, even if their positions changed. When a selected item is no longer present, the selection MUST move to the nearest surviving item in the previous ordering rather than jumping to the top of the list.
 - **FR-046**: The application MUST refresh data automatically on a configurable interval.
 - **FR-047**: Users MUST be able to trigger an immediate refresh with a key press.
@@ -268,7 +279,7 @@ The developer presses a key on a selected pull request and it opens in their bro
 - **SC-001**: A user with a tracked set of 20 repositories can see which of them have failing pull requests within 15 seconds of launching, with no keystrokes beyond launching.
 - **SC-002**: A user asked which of their tracked repositories currently has a failing pull request answers correctly from the first screen, without pressing any key.
 - **SC-003**: A new user can go from an empty configuration to a tracked set of at least 5 repositories across 2 organizations in under 2 minutes, without editing any file by hand.
-- **SC-004**: With 20 tracked repositories, the dashboard is drawn and accepting input within 1 second of launch, and every repository has resolved to a final count and CI indicator within 15 seconds. Repositories fill in progressively rather than the whole view waiting on the slowest one.
+- **SC-004**: With 20 tracked repositories, the dashboard is drawn and accepting input within 1 second of launch, and every repository has resolved to a final count and CI indicator within 15 seconds. A refresh of that tracked set costs a handful of API calls, not one per repository.
 - **SC-005**: Every navigation, filter and pane-switch action produces a visible response within 100 milliseconds, and never waits on a network request.
 - **SC-006**: The application runs end to end with no network access and no credentials, rendering every screen and all four CI states.
 - **SC-007**: The interface behaviours of rendering, CI rollup, filtering and navigation are all verifiable in automated tests that require neither network access nor credentials.
@@ -301,7 +312,7 @@ These are reasonable defaults chosen where the brainstorm left a question open. 
 - **Credential availability**: For live use, the user has either an authenticated `gh` CLI or `GITHUB_TOKEN` set. The application does not attempt to perform a login flow itself.
 - **Configuration location**: The tracked set and settings live in a single user-level configuration file in the platform's standard configuration directory, in a human-readable text format the user may edit by hand.
 - **Refresh interval**: The automatic refresh interval defaults to 5 minutes and is configurable in the configuration file. This keeps a tracked set of a few dozen repositories comfortably inside normal API rate limits.
-- **Eager check fetching**: Check state is fetched for every open pull request of every tracked repository on each refresh, rather than lazily when a repository is selected. This is what makes the repository-level indicator meaningful at a glance, and it is the reason the refresh interval is measured in minutes rather than seconds. Because a tracked set of 20 repositories implies well over a hundred requests, these are expected to run concurrently and to land in the interface as they resolve, which is what the timing in SC-004 assumes.
+- **Eager check fetching**: Check state is fetched for every open pull request of every tracked repository on each refresh, rather than lazily when a repository is selected. This is what makes the repository-level indicator meaningful at a glance, and it is the reason the refresh interval is measured in minutes rather than seconds. The whole tracked set is requested together rather than repository by repository, so a refresh costs a handful of calls instead of one per repository, which is what keeps the timing in SC-004 inside normal rate limits. A repository with an unusually large number of open pull requests is the exception: paging through its remainder costs extra calls.
 - **Expected scale**: The tracked set is expected to hold tens of repositories, not hundreds. Behaviour remains correct beyond that, but refresh duration and rate-limit headroom are only guaranteed at the stated scale.
 - **Draft pull requests**: Draft pull requests are open pull requests and are included.
 - **Forks**: Forked repositories appear in the settings repository list. Archived ones do not.

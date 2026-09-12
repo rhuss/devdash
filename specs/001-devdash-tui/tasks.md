@@ -233,7 +233,7 @@ restart and see them still there.
 - [X] T054 [US2] Persist the tracked set through the merge protocol whenever it changes and reflect the updated set on return to the dashboard without a restart, per FR-021, FR-023 and FR-026, in `src/app/update.rs`
 - [X] T055 [US2] Implement rename following so a repository matched by id updates its stored owner and name, per FR-022, in `src/config.rs`
 - [X] T056 [US2] Implement the empty tracked set state that names the settings key, per FR-021 and US2 scenario 7, in `src/ui/dashboard.rs`
-- [X] T057 [US2] Implement the organization-list failure path that still offers the personal account, per FR-029, in `src/ui/settings.rs`
+- [X] T057 [US2] Implement the organization-list failure path that reports the reason, names the log file and offers a retry key, per FR-029, in `src/ui/settings.rs`
 
 **Checkpoint**: Repositories are chosen in the interface and survive a restart.
 
@@ -308,7 +308,7 @@ previous data stays on screen.
 - [X] T073 [US5] Implement `RefreshState` tracking in-flight, last success, last error and rate-limit reset, in `src/app/state.rs`
 - [X] T074 [US5] Implement the configurable interval timer, defaulting to 300 seconds, per FR-046, in `src/app/mod.rs`
 - [X] T075 [US5] Implement the manual refresh key with a single-flight guard rejecting a concurrent refresh, per FR-047 and FR-052, in `src/app/update.rs`
-- [X] T076 [US5] Implement progressive population so resolved repositories appear while others stay pending, per FR-044, in `src/app/update.rs`
+- [X] T076 [US5] Implement the batched refresh with per-repository results, leaving a repository no refresh has covered as pending, per FR-044, in `src/app/update.rs`
 - [X] T077 [US5] Implement the in-flight indicator and last-successful-refresh time, per FR-049, in `src/ui/status_bar.rs`
 - [X] T078 [US5] Implement failed-refresh handling that retains previous data and shows an error indicator, per FR-050, in `src/app/update.rs`
 - [X] T079 [US5] Implement rate-limit handling that reports the reset time and suspends automatic refresh until then, per FR-051, in `src/app/update.rs`
@@ -480,3 +480,15 @@ Track D is the most isolated.
 - **T014 is the highest-leverage task in Phase 2.** Seventeen fixture cases drive
   every interface test in the project. Getting the coverage right there is what
   makes the rest of the suite possible.
+
+## Reconciliation (2026-09-12)
+
+Work added by `speckit-spex-evolve` after the deep review, where the spec was
+found to be right and the code was not. Kept here rather than renumbered into
+the phases above, so the completed phase history stays readable.
+
+- [X] T094 Move a vanished selection to the nearest survivor in the previous ordering, for repositories and pull requests, per FR-045, in `src/app/state.rs`
+- [X] T095 Render the loading state inside the dashboard's own two-pane layout, per FR-042, in `src/ui/dashboard.rs`
+- [X] T096 Carry the log file's path with every error indicator, including a failed save, a failed organization fetch and a failed browser handoff, per FR-064 and FR-062, in `src/ui/status_bar.rs` and `src/ui/settings.rs`
+- [X] T097 Report why the account and organization list are unavailable and offer a retry that refetches the viewer, per FR-029, in `src/ui/settings.rs` and `src/main.rs`
+- [X] T098 Confirm a persisted tracked-set change and surface a failed write, per FR-065, in `src/app/update.rs`

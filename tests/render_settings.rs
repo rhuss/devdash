@@ -215,3 +215,116 @@ fn settings_failure_state_shows_error_and_retry() {
         "retry hint should appear"
     );
 }
+
+/// FR-015: the repository list names the key that leaves settings, not just
+/// the one that steps up a level.
+#[test]
+fn settings_repo_list_hints_the_way_back_to_the_dashboard() {
+    let mut state = test_state_with_viewer();
+    state.screen = Screen::Settings(SettingsScreen::Repositories {
+        org: "acme".into(),
+        state: OrgRepoState::Ready {
+            repos: vec![OrgRepo {
+                id: RepoId(1001),
+                owner: "acme".into(),
+                name: "api".into(),
+                is_archived: false,
+                is_fork: false,
+            }],
+        },
+    });
+
+    let output = render_to_string(&state, 100, 20);
+    assert!(
+        output.contains("s:dashboard"),
+        "the repository list should name the key that returns to the dashboard"
+    );
+    assert!(
+        output.contains("Esc:orgs"),
+        "Esc should be labelled as stepping up to the organization list"
+    );
+}
+
+/// On the organization list, Esc is itself the way back to the dashboard.
+#[test]
+fn settings_org_list_labels_esc_as_the_way_back() {
+    let state = test_state_with_viewer();
+
+    let output = render_to_string(&state, 100, 20);
+    assert!(
+        output.contains("Esc:dashboard"),
+        "the organization list should label Esc as returning to the dashboard"
+    );
+}
+
+/// The save confirmation is visible on the settings screen itself.
+#[test]
+fn settings_shows_the_save_confirmation() {
+    let mut state = test_state_with_viewer();
+    state.status_message = Some("Saved · 2 repositories tracked".into());
+
+    let output = render_to_string(&state, 100, 20);
+    assert!(
+        output.contains("Saved"),
+        "the save confirmation should render on the settings screen"
+    );
+}
+
+/// FR-029: when the account and its organizations cannot be read, the settings
+/// screen says so instead of looking like a user who belongs to nothing.
+#[test]
+fn settings_reports_why_the_organization_list_is_unavailable() {
+    let mut state = AppState::new(SourceKind::Fixture, PathBuf::from("/tmp/test.log"));
+    state.screen = Screen::Settings(SettingsScreen::Organizations);
+    state.viewer = None;
+    state.viewer_error = Some("not authorized for GraphQL API".into());
+
+    let output = render_to_string(&state, 100, 20);
+
+    assert!(
+        output.contains("not authorized"),
+        "the reason should be on screen:\n{output}"
+    );
+    assert!(
+        output.contains("/tmp/test.log"),
+        "FR-064: the log path should be reachable from the error:\n{output}"
+    );
+    assert!(
+        output.contains("r:retry") || output.contains("r to retry"),
+        "the retry key should be named:\n{output}"
+    );
+}
+
+/// An empty list with no error yet is still loading, not a failure.
+#[test]
+fn settings_without_a_viewer_yet_reads_as_loading() {
+    let mut state = AppState::new(SourceKind::Fixture, PathBuf::from("/tmp/test.log"));
+    state.screen = Screen::Settings(SettingsScreen::Organizations);
+
+    let output = render_to_string(&state, 100, 20);
+
+    assert!(
+        output.contains("Loading"),
+        "a pending account fetch should read as loading:\n{output}"
+    );
+}
+
+/// FR-064: a failed organization fetch names the log file too.
+#[test]
+fn settings_org_failure_names_the_log_file() {
+    let mut state = test_state_with_viewer();
+    state.screen = Screen::Settings(SettingsScreen::Repositories {
+        org: "acme".into(),
+        state: OrgRepoState::Failed {
+            reason: "SSO enforcement".into(),
+        },
+    });
+
+    let output = render_to_string(&state, 100, 20);
+
+    assert!(output.contains("SSO enforcement"));
+    assert!(
+        output.contains("/tmp/test.log"),
+        "the log path should accompany the failure:\n{output}"
+    );
+}

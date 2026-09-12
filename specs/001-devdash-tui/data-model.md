@@ -357,7 +357,7 @@ to name the retry key. Neither may render as an empty dashboard.
 | FR-030 three filter modes | `FilterMode` |
 | FR-031, FR-032 team requests and fallback | `ReviewRequest::Team`, `TeamMemberships` |
 | FR-042, FR-043 loading and first-fetch failure | `Screen::Loading`, `Screen::LoadFailed` |
-| FR-044 progressive population | `RepoStatus::Pending` |
+| FR-044 batched refresh, uncovered repository | `RepoStatus::Pending` |
 | FR-045 selection survives refresh | `Selection` by identity, reconciliation rule |
 | FR-049..FR-052 freshness and concurrency | `RefreshState` |
 | FR-053 unreadable repository stays | `RepoStatus::Unreadable` |

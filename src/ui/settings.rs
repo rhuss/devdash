@@ -20,19 +20,40 @@ fn render_orgs(state: &AppState, frame: &mut Frame, area: Rect) {
     let orgs = state.organizations();
 
     if orgs.is_empty() {
-        let msg = Paragraph::new(vec![
-            Line::from(""),
-            Line::from(Span::styled(
-                " No organizations available",
-                Style::default().fg(Color::DarkGray),
-            )),
-            Line::from(""),
-            Line::from(Span::styled(
-                " Press Esc to return",
-                Style::default().fg(Color::DarkGray),
-            )),
-        ])
-        .block(
+        // FR-029: an unavailable list must read as a failure with a reason,
+        // never as a user who belongs to nothing.
+        let lines = match &state.viewer_error {
+            Some(reason) => vec![
+                Line::from(""),
+                Line::from(Span::styled(
+                    format!(" Could not read your account: {reason}"),
+                    Style::default().fg(Color::Red),
+                )),
+                Line::from(Span::styled(
+                    format!(" Detail in log: {}", state.log_path.display()),
+                    Style::default().fg(Color::DarkGray),
+                )),
+                Line::from(""),
+                Line::from(Span::styled(
+                    " Press r to retry, Esc to return",
+                    Style::default().fg(Color::DarkGray),
+                )),
+            ],
+            None => vec![
+                Line::from(""),
+                Line::from(Span::styled(
+                    " Loading your account...",
+                    Style::default().fg(Color::Cyan),
+                )),
+                Line::from(""),
+                Line::from(Span::styled(
+                    " Press Esc to return",
+                    Style::default().fg(Color::DarkGray),
+                )),
+            ],
+        };
+
+        let msg = Paragraph::new(lines).block(
             Block::default()
                 .borders(Borders::ALL)
                 .title(" Settings ")
@@ -104,6 +125,12 @@ fn render_repos(
                 Line::from(Span::styled(
                     format!(" Failed: {reason}"),
                     Style::default().fg(Color::Red),
+                )),
+                // FR-064: the detail behind the summary lives in the log file,
+                // so the path has to be reachable from the error itself.
+                Line::from(Span::styled(
+                    format!(" Detail in log: {}", state.log_path.display()),
+                    Style::default().fg(Color::DarkGray),
                 )),
                 Line::from(""),
                 Line::from(Span::styled(

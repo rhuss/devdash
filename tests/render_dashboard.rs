@@ -276,3 +276,74 @@ fn unreadable_repo_degrades_to_marked_row() {
         "unreadable repo should show a warning marker"
     );
 }
+
+/// FR-042 / US5 scenario 6: before the first fetch returns, the dashboard shows
+/// its own layout with a loading state, not a standalone box.
+#[test]
+fn loading_state_shows_the_dashboard_layout() {
+    let mut state = AppState::new(SourceKind::Fixture, PathBuf::from("/tmp/test.log"));
+    state.screen = Screen::Loading;
+
+    let output = render_to_string(&state, 100, 20);
+
+    assert!(
+        output.contains("Repositories"),
+        "the repository pane should already be laid out:\n{output}"
+    );
+    assert!(
+        output.contains("Pull Requests"),
+        "the pull request pane should already be laid out:\n{output}"
+    );
+    assert!(
+        output.contains("Loading"),
+        "the panes should say they are loading:\n{output}"
+    );
+    assert!(
+        output.contains("q:quit"),
+        "the quit key should be discoverable while loading:\n{output}"
+    );
+}
+
+/// FR-064: an error indicator carries the path of the log holding the detail.
+#[test]
+fn an_error_status_message_names_the_log_file() {
+    let mut state = test_state_with_repos(vec![make_repo(
+        1,
+        "acme",
+        "api",
+        vec![make_pr(10, "PR A", "alice", CiState::Passing)],
+    )]);
+    state.status_message = Some("Save failed: permission denied".into());
+    state.status_is_error = true;
+
+    let output = render_to_string(&state, 160, 20);
+
+    assert!(
+        output.contains("Save failed"),
+        "the failure should be on screen:\n{output}"
+    );
+    assert!(
+        output.contains("/tmp/test.log"),
+        "the log path should accompany the failure:\n{output}"
+    );
+}
+
+/// A success message is not an error, so it must not drag the log path along.
+#[test]
+fn a_success_status_message_does_not_name_the_log_file() {
+    let mut state = test_state_with_repos(vec![make_repo(
+        1,
+        "acme",
+        "api",
+        vec![make_pr(10, "PR A", "alice", CiState::Passing)],
+    )]);
+    state.status_message = Some("Saved \u{b7} 1 repository tracked".into());
+
+    let output = render_to_string(&state, 160, 20);
+
+    assert!(output.contains("Saved"));
+    assert!(
+        !output.contains("/tmp/test.log"),
+        "a confirmation should not advertise the log file:\n{output}"
+    );
+}

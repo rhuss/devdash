@@ -16,7 +16,7 @@ use tokio::sync::mpsc;
 
 use devdash::app::event::Event;
 use devdash::app::state::{AppState, OrgRepoState, Screen, SettingsScreen};
-use devdash::app::update::{apply_dashboard_data, handle_key};
+use devdash::app::update::{apply_dashboard_data, handle_key, take_refresh_request};
 use devdash::auth;
 use devdash::cli::Cli;
 use devdash::config;
@@ -190,10 +190,12 @@ async fn run() -> Result<()> {
                 Event::ViewerData(result) => match result {
                     Ok(viewer) => {
                         state.viewer = Some(viewer);
+                        state.viewer_error = None;
                     }
                     Err(ref e) => {
                         tracing::error!("Failed to load viewer data: {e}");
                         state.refresh.last_error = Some(format!("viewer: {e}"));
+                        state.viewer_error = Some(e.to_string());
                     }
                 },
                 Event::OrgRepoData { org, result } => {
@@ -218,18 +220,24 @@ async fn run() -> Result<()> {
             Err(_) => {}
         }
 
-        if state.refresh_requested {
-            state.refresh_requested = false;
-            if !state.refresh.in_flight {
-                state.refresh.in_flight = true;
-                let src = Arc::clone(&source);
-                let t = state.tracked.clone();
-                let ev_tx = tx.clone();
-                tokio::spawn(async move {
-                    let result = src.dashboard(&t).await;
-                    let _ = ev_tx.send(Event::DashboardData(result)).await;
-                });
-            }
+        if take_refresh_request(&mut state) {
+            state.refresh.in_flight = true;
+            let src = Arc::clone(&source);
+            let t = state.tracked.clone();
+            let ev_tx = tx.clone();
+            tokio::spawn(async move {
+                let result = src.dashboard(&t).await;
+                let _ = ev_tx.send(Event::DashboardData(result)).await;
+            });
+        }
+
+        if std::mem::take(&mut state.viewer_fetch_requested) {
+            let src = Arc::clone(&source);
+            let ev_tx = tx.clone();
+            tokio::spawn(async move {
+                let result = src.viewer().await;
+                let _ = ev_tx.send(Event::ViewerData(result)).await;
+            });
         }
 
         if state.org_fetch_requested.take().is_some() {

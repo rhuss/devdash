@@ -27,6 +27,39 @@ pub fn render(state: &AppState, frame: &mut Frame, area: Rect) {
     status_bar::render(state, frame, bar_area);
 }
 
+/// Draw the dashboard layout with a loading state in place of content.
+///
+/// FR-042: the shape of the screen is established from the first frame rather
+/// than arriving once the first fetch returns.
+pub fn render_loading(state: &AppState, frame: &mut Frame, area: Rect) {
+    let chunks = Layout::vertical([Constraint::Min(3), Constraint::Length(1)]).split(area);
+    let panes = Layout::horizontal([Constraint::Percentage(40), Constraint::Percentage(60)])
+        .split(chunks[0]);
+
+    render_placeholder_pane(frame, panes[0], " Repositories ", "Loading...");
+    render_placeholder_pane(frame, panes[1], " Pull Requests ", "Loading...");
+
+    status_bar::render(state, frame, chunks[1]);
+}
+
+fn render_placeholder_pane(frame: &mut Frame, area: Rect, title: &str, message: &str) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::DarkGray))
+        .title(title.to_string());
+
+    let paragraph = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            format!(" {message}"),
+            Style::default().fg(Color::Cyan),
+        )),
+    ])
+    .block(block);
+
+    frame.render_widget(paragraph, area);
+}
+
 fn render_empty_dashboard(frame: &mut Frame, area: Rect) {
     let msg = Paragraph::new(vec![
         Line::from(""),

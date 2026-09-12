@@ -1,7 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::config;
-use crate::domain::{OrgRepo, RepoStatus, Repository, sort_pull_requests, sort_repositories};
+use crate::domain::{OrgRepo, RepoStatus, Repository, sort_pull_requests};
 use crate::source::{RepoPayload, RepositoryData};
 
 use super::state::{self, AppState, FilterMode, OrgRepoState, Pane, Screen, SettingsScreen};
@@ -67,6 +67,7 @@ fn open_selected_pr(state: &mut AppState) {
     };
 
     state.status_message = None;
+    state.status_is_error = false;
 
     let opener = if cfg!(target_os = "macos") {
         "open"
@@ -82,8 +83,12 @@ fn open_selected_pr(state: &mut AppState) {
         .spawn()
     {
         Ok(_) => {}
-        Err(_) => {
-            state.status_message = Some(format!("Open: {url}"));
+        Err(e) => {
+            // FR-062: say that the handoff failed, and show the URL so it can
+            // still be copied out by hand.
+            tracing::warn!("Could not launch {opener}: {e}");
+            state.status_message = Some(format!("Could not open a browser \u{b7} {url}"));
+            state.status_is_error = true;
         }
     }
 }
@@ -108,7 +113,7 @@ fn handle_settings_orgs_key(state: &mut AppState, key: KeyEvent) -> Screen {
             state.should_quit = true;
             Screen::Dashboard
         }
-        KeyCode::Esc | KeyCode::Char('h') | KeyCode::Left => Screen::Dashboard,
+        KeyCode::Esc | KeyCode::Char('h' | 's') | KeyCode::Left => leave_settings(state),
         KeyCode::Up | KeyCode::Char('k') => {
             if state.settings_state.org_index > 0 {
                 state.settings_state.org_index -= 1;
@@ -118,6 +123,14 @@ fn handle_settings_orgs_key(state: &mut AppState, key: KeyEvent) -> Screen {
         KeyCode::Down | KeyCode::Char('j') => {
             if !orgs.is_empty() && state.settings_state.org_index + 1 < orgs.len() {
                 state.settings_state.org_index += 1;
+            }
+            Screen::Settings(SettingsScreen::Organizations)
+        }
+        // FR-029: the identity fetch is what produces the organization list,
+        // so when it failed the retry has to refetch the viewer.
+        KeyCode::Char('r') => {
+            if state.viewer.is_none() {
+                state.viewer_fetch_requested = true;
             }
             Screen::Settings(SettingsScreen::Organizations)
         }
@@ -151,6 +164,7 @@ fn handle_settings_repos_key(
         KeyCode::Esc | KeyCode::Char('h') | KeyCode::Left => {
             Screen::Settings(SettingsScreen::Organizations)
         }
+        KeyCode::Char('s') => leave_settings(state),
         KeyCode::Up | KeyCode::Char('k') => {
             if state.settings_state.repo_index > 0 {
                 state.settings_state.repo_index -= 1;
@@ -178,7 +192,7 @@ fn handle_settings_repos_key(
                 if let Some(repo) = visible.get(state.settings_state.repo_index) {
                     let repo_clone = (*repo).clone();
                     state.toggle_tracked(&repo_clone);
-                    persist_config(state);
+                    persist_and_report(state);
                 }
             }
             Screen::Settings(SettingsScreen::Repositories {
@@ -207,17 +221,62 @@ fn handle_settings_repos_key(
     }
 }
 
-fn persist_config(state: &AppState) {
+fn persist_config(state: &AppState) -> anyhow::Result<()> {
     if state.config_path.as_os_str().is_empty() {
-        return;
+        return Ok(());
     }
     let cfg = config::Config {
         refresh_interval_secs: state.refresh_interval_secs,
         tracked: state.tracked.clone(),
     };
-    if let Err(e) = config::save(&cfg, &state.config_path, &state.untracked_ids) {
+    config::save(&cfg, &state.config_path, &state.untracked_ids).inspect_err(|e| {
         tracing::warn!("Failed to save config: {e}");
+    })
+}
+
+/// Persist the tracked set and tell the user what happened. A silent save
+/// leaves a failed write looking exactly like a successful one.
+fn persist_and_report(state: &mut AppState) {
+    match persist_config(state) {
+        Ok(()) => {
+            let count = state.tracked.len();
+            let noun = if count == 1 {
+                "repository"
+            } else {
+                "repositories"
+            };
+            state.status_message = Some(format!("Saved \u{b7} {count} {noun} tracked"));
+            state.status_is_error = false;
+        }
+        Err(e) => {
+            state.status_message = Some(format!("Save failed: {e}"));
+            state.status_is_error = true;
+        }
     }
+}
+
+/// Close the settings screen. A changed tracked set reconciles the repository
+/// pane immediately and queues one refresh, so the dashboard shows the new set
+/// without a restart (FR-026).
+fn leave_settings(state: &mut AppState) -> Screen {
+    state.status_message = None;
+    state.status_is_error = false;
+    if state.tracked_dirty {
+        state.tracked_dirty = false;
+        state.reconcile_repos_to_tracked();
+        state.refresh_requested = true;
+    }
+    Screen::Dashboard
+}
+
+/// Consume a queued refresh request, but only when no fetch is in flight.
+/// A request made during a fetch stays queued rather than being dropped.
+pub fn take_refresh_request(state: &mut AppState) -> bool {
+    if state.refresh_requested && !state.refresh.in_flight {
+        state.refresh_requested = false;
+        return true;
+    }
+    false
 }
 
 #[allow(clippy::collapsible_if)]
@@ -291,6 +350,11 @@ fn first_pull_number(repo: &Repository) -> Option<u32> {
 }
 
 pub fn apply_dashboard_data(state: &mut AppState, data: Vec<RepositoryData>) {
+    // Taken before the statuses are replaced: the old pull ordering is the
+    // only way to land the selection next to a pull request that has closed
+    // (FR-045).
+    let prev = state.ordering_snapshot();
+
     for item in data {
         let status = match item.result {
             Ok(RepoPayload { open_count, pulls }) => RepoStatus::Ready { open_count, pulls },
@@ -311,13 +375,12 @@ pub fn apply_dashboard_data(state: &mut AppState, data: Vec<RepositoryData>) {
             });
         }
     }
-    sort_repositories(&mut state.repos);
     for repo in &mut state.repos {
         if let RepoStatus::Ready { pulls, .. } = &mut repo.status {
             sort_pull_requests(pulls);
         }
     }
-    state.selection.reconcile(&state.repos);
+    state.reconcile_repos_to_tracked_from(&prev);
 
     // T055: Rename following - update stored tracked entries when API returns different owner/name
     let mut tracked_changed = false;
@@ -331,7 +394,7 @@ pub fn apply_dashboard_data(state: &mut AppState, data: Vec<RepositoryData>) {
         }
     }
     if tracked_changed {
-        persist_config(state);
+        let _ = persist_config(state);
     }
 
     if matches!(state.screen, Screen::Loading) {
