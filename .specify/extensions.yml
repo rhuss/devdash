@@ -28,11 +28,11 @@ hooks:
     condition: null
   - extension: spex-worktrees
     command: speckit.spex-worktrees.manage
-    enabled: true
+    enabled: false
     optional: false
     priority: 10
     prompt: Execute speckit.spex-worktrees.manage?
-    description: Create git worktree after specification
+    description: 'Run action ''create'': create git worktree after specification'
     condition: null
   before_plan:
   - extension: spex
@@ -70,7 +70,7 @@ hooks:
     condition: null
   - extension: spex-collab
     command: speckit.spex-collab.reviewers
-    enabled: true
+    enabled: false
     optional: false
     priority: 10
     prompt: Execute speckit.spex-collab.reviewers?
@@ -87,15 +87,15 @@ hooks:
     condition: null
   - extension: spex-worktrees
     command: speckit.spex-worktrees.manage
-    enabled: true
+    enabled: false
     optional: false
     priority: 10
     prompt: Execute speckit.spex-worktrees.manage?
-    description: Verify worktree isolation before implementation
+    description: 'Run action ''ensure'': verify worktree isolation before implementation'
     condition: null
   - extension: spex-collab
     command: speckit.spex-collab.phase-split
-    enabled: true
+    enabled: false
     optional: false
     priority: 10
     prompt: Execute speckit.spex-collab.phase-split?
